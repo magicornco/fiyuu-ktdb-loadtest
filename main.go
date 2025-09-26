@@ -179,11 +179,17 @@ func runLoadTest() error {
 
 	// Create and run load test
 	loadTester := loadtest.NewLoadTester(cfg, metricsCollector)
+
+	// Use a flag to prevent double cleanup
+	cleanupDone := false
 	defer func() {
 		// Ensure cleanup happens even if panic occurs
-		logrus.Info("Ensuring cleanup...")
-		if err := loadTester.Close(); err != nil {
-			logrus.Errorf("Error during deferred cleanup: %v", err)
+		if !cleanupDone {
+			logrus.Info("Ensuring cleanup...")
+			if err := loadTester.Close(); err != nil {
+				logrus.Errorf("Error during deferred cleanup: %v", err)
+			}
+			cleanupDone = true
 		}
 	}()
 
@@ -199,11 +205,14 @@ func runLoadTest() error {
 	}
 
 	// Always clean up connections, even if test failed
-	logrus.Info("Cleaning up connections...")
-	if err := loadTester.Close(); err != nil {
-		logrus.Errorf("Error during cleanup: %v", err)
-	} else {
-		logrus.Info("All connections cleaned up successfully")
+	if !cleanupDone {
+		logrus.Info("Cleaning up connections...")
+		if err := loadTester.Close(); err != nil {
+			logrus.Errorf("Error during cleanup: %v", err)
+		} else {
+			logrus.Info("All connections cleaned up successfully")
+		}
+		cleanupDone = true
 	}
 
 	logrus.Info("Load test completed")

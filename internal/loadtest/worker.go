@@ -76,7 +76,16 @@ func (w *Worker) Start() {
 // Stop stops the worker
 func (w *Worker) Stop() {
 	w.cancel()
-	close(w.stopChan)
+
+	// Check if channel is already closed to prevent panic
+	select {
+	case <-w.stopChan:
+		// Channel is already closed
+		return
+	default:
+		// Channel is open, close it
+		close(w.stopChan)
+	}
 }
 
 // executeQuery executes a randomly selected query
@@ -337,12 +346,12 @@ func (w *Worker) thinkTime() {
 // Close closes the worker and its database connection
 func (w *Worker) Close() error {
 	w.Stop()
-	
+
 	// Force close all connections
 	if w.dbManager != nil {
 		w.dbManager.Close()
 	}
-	
+
 	logrus.Debugf("Worker %d: Closed and cleaned up connections", w.id)
 	return nil
 }

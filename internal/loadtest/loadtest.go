@@ -145,19 +145,27 @@ func (lt *LoadTester) Close() error {
 	var lastErr error
 
 	logrus.Info("Closing all workers and cleaning up connections...")
-	
+
+	// Check if workers are already closed
+	if lt.workers == nil {
+		logrus.Info("Workers already closed")
+		return nil
+	}
+
 	for i, worker := range lt.workers {
-		if err := worker.Close(); err != nil {
-			lastErr = err
-			logrus.Errorf("Failed to close worker %d: %v", i, err)
+		if worker != nil {
+			if err := worker.Close(); err != nil {
+				lastErr = err
+				logrus.Errorf("Failed to close worker %d: %v", i, err)
+			}
 		}
 	}
 
 	// Clear workers slice
 	lt.workers = nil
-	
+
 	lt.metrics.Close()
-	
+
 	logrus.Info("All connections cleaned up")
 	return lastErr
 }
