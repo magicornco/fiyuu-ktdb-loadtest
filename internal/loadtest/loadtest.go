@@ -19,14 +19,19 @@ type LoadTester struct {
 	workers   []*Worker
 	wg        sync.WaitGroup
 	closeOnce sync.Once // Prevent double close
+
+	// Dynamic scaling
+	currentUsers int
+	scalingMutex sync.RWMutex
 }
 
 // NewLoadTester creates a new load tester
 func NewLoadTester(cfg *config.Config, metrics *metrics.Collector) *LoadTester {
 	return &LoadTester{
-		config:  cfg,
-		metrics: metrics,
-		workers: make([]*Worker, 0),
+		config:       cfg,
+		metrics:      metrics,
+		workers:      make([]*Worker, 0),
+		currentUsers: cfg.Test.ConcurrentUsers,
 	}
 }
 
@@ -49,6 +54,9 @@ func (lt *LoadTester) Run(ctx context.Context) error {
 	if err := lt.startWorkers(ctx); err != nil {
 		return fmt.Errorf("failed to start workers: %w", err)
 	}
+
+	// Start dynamic scaling if enabled
+	lt.StartDynamicScaling(ctx)
 
 	// Wait for test duration or context cancellation
 	select {
@@ -194,4 +202,130 @@ func (lt *LoadTester) GetStats() map[string]interface{} {
 	stats["connections_idle"] = totalIdleConnections
 
 	return stats
+}
+
+// ScaleUsers dynamically scales the number of users
+func (lt *LoadTester) ScaleUsers(targetUsers int, rampDuration time.Duration, description string) error {
+	lt.scalingMutex.Lock()
+	defer lt.scalingMutex.Unlock()
+
+	currentCount := len(lt.workers)
+
+	logrus.Infof("Scaling users: %d -> %d (%s)", currentCount, targetUsers, description)
+
+	if targetUsers > currentCount {
+		// Add users
+		return lt.addUsers(targetUsers-currentCount, rampDuration)
+	} else if targetUsers < currentCount {
+		// Remove users
+		return lt.removeUsers(currentCount-targetUsers, rampDuration)
+	}
+
+	return nil
+}
+
+// addUsers adds new users gradually
+func (lt *LoadTester) addUsers(count int, rampDuration time.Duration) error {
+	if count <= 0 {
+		return nil
+	}
+
+	rampInterval := rampDuration / time.Duration(count)
+	if rampInterval < time.Millisecond {
+		rampInterval = time.Millisecond
+	}
+
+	logrus.Infof("Adding %d users with %v interval", count, rampInterval)
+
+	for i := 0; i < count; i++ {
+		workerID := len(lt.workers)
+
+		worker, err := NewWorker(workerID, lt.config, lt.metrics)
+		if err != nil {
+			return fmt.Errorf("failed to create worker %d: %w", workerID, err)
+		}
+
+		lt.workers = append(lt.workers, worker)
+		lt.wg.Add(1)
+
+		go func(w *Worker) {
+			defer lt.wg.Done()
+			w.Start()
+		}(worker)
+
+		// Update metrics
+		lt.metrics.SetActiveUsers(len(lt.workers))
+		lt.currentUsers = len(lt.workers)
+
+		if i < count-1 {
+			time.Sleep(rampInterval)
+		}
+	}
+
+	logrus.Infof("Added %d users. Total users: %d", count, len(lt.workers))
+	return nil
+}
+
+// removeUsers removes users gradually
+func (lt *LoadTester) removeUsers(count int, rampDuration time.Duration) error {
+	if count <= 0 || count >= len(lt.workers) {
+		return nil
+	}
+
+	rampInterval := rampDuration / time.Duration(count)
+	if rampInterval < time.Millisecond {
+		rampInterval = time.Millisecond
+	}
+
+	logrus.Infof("Removing %d users with %v interval", count, rampInterval)
+
+	// Remove from the end
+	for i := 0; i < count; i++ {
+		if len(lt.workers) == 0 {
+			break
+		}
+
+		// Get the last worker
+		lastIndex := len(lt.workers) - 1
+		worker := lt.workers[lastIndex]
+
+		// Stop the worker
+		worker.Stop()
+
+		// Remove from slice
+		lt.workers = lt.workers[:lastIndex]
+
+		// Update metrics
+		lt.metrics.SetActiveUsers(len(lt.workers))
+		lt.currentUsers = len(lt.workers)
+
+		if i < count-1 {
+			time.Sleep(rampInterval)
+		}
+	}
+
+	logrus.Infof("Removed %d users. Total users: %d", count, len(lt.workers))
+	return nil
+}
+
+// StartDynamicScaling starts the dynamic scaling process
+func (lt *LoadTester) StartDynamicScaling(ctx context.Context) {
+	if !lt.config.Test.UserScaling.Enabled {
+		return
+	}
+
+	logrus.Info("Starting dynamic user scaling...")
+
+	go func() {
+		for _, step := range lt.config.Test.UserScaling.ScalingPlan {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(step.TimeOffset):
+				if err := lt.ScaleUsers(step.TargetUsers, step.RampDuration, step.Description); err != nil {
+					logrus.Errorf("Failed to scale users: %v", err)
+				}
+			}
+		}
+	}()
 }

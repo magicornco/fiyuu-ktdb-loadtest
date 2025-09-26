@@ -39,8 +39,25 @@ type TestConfig struct {
 	RampUpTime      time.Duration `mapstructure:"ramp_up_time"`
 	ThinkTime       time.Duration `mapstructure:"think_time"`
 
+	// Dynamic user scaling
+	UserScaling UserScalingConfig `mapstructure:"user_scaling"`
+
 	// Query settings
 	Queries []QueryConfig `mapstructure:"queries"`
+}
+
+// UserScalingConfig holds dynamic user scaling parameters
+type UserScalingConfig struct {
+	Enabled     bool          `mapstructure:"enabled"`
+	ScalingPlan []ScalingStep `mapstructure:"scaling_plan"`
+}
+
+// ScalingStep defines a user scaling step
+type ScalingStep struct {
+	TimeOffset   time.Duration `mapstructure:"time_offset"`   // When to apply this step
+	TargetUsers  int           `mapstructure:"target_users"`  // Target user count
+	RampDuration time.Duration `mapstructure:"ramp_duration"` // How long to ramp to target
+	Description  string        `mapstructure:"description"`   // Description of this step
 }
 
 // QueryConfig defines a test query

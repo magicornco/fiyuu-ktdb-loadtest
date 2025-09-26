@@ -22,6 +22,30 @@ test:
   ramp_up_time: 30s          # 30 saniyede 500 kullanıcıya çık
   think_time: 1s              # Normal think time
   
+  # Dynamic user scaling
+  user_scaling:
+    enabled: true
+    scaling_plan:
+      - time_offset: 3      # 1 dakika sonra
+        target_users: 1000   # 1000 user'a çık
+        ramp_duration: 30s   # 30 saniyede çık
+        description: "Scale up to 1000 users"
+      
+      - time_offset: 4m      # 3 dakika sonra
+        target_users: 1500   # 2000 user'a çık
+        ramp_duration: 1m    # 1 dakikada çık
+        description: "Scale up to 2000 users"
+      
+      - time_offset: 5m      # 5 dakika sonra
+        target_users: 1000    # 500 user'a düş
+        ramp_duration: 30s   # 30 saniyede düş
+        description: "Scale down to 500 users"
+      
+      - time_offset: 7m      # 7 dakika sonra
+        target_users: 500    # 100 user'a düş
+        ramp_duration: 1m    # 1 dakikada düş
+        description: "Scale down to 100 users"
+  
   # Production query'leri ile test
   queries:
     - name: "select_version"

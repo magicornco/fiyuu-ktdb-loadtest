@@ -244,7 +244,7 @@ func (w *Worker) executeInsertQuery(query *config.QueryConfig, result *metrics.Q
 	// Update connection stats
 	stats := w.dbManager.GetStats()
 	w.metrics.SetActiveConnections(stats.OpenConnections)
-	
+
 	res, err := w.dbManager.ExecuteExec(query.SQL)
 	if err != nil {
 		result.Success = false
@@ -271,7 +271,7 @@ func (w *Worker) executeUpdateQuery(query *config.QueryConfig, result *metrics.Q
 	// Update connection stats
 	stats := w.dbManager.GetStats()
 	w.metrics.SetActiveConnections(stats.OpenConnections)
-	
+
 	res, err := w.dbManager.ExecuteExec(query.SQL)
 	if err != nil {
 		result.Success = false
@@ -296,7 +296,7 @@ func (w *Worker) executeDeleteQuery(query *config.QueryConfig, result *metrics.Q
 	// Update connection stats
 	stats := w.dbManager.GetStats()
 	w.metrics.SetActiveConnections(stats.OpenConnections)
-	
+
 	res, err := w.dbManager.ExecuteExec(query.SQL)
 	if err != nil {
 		result.Success = false
@@ -321,7 +321,7 @@ func (w *Worker) executeGenericQuery(query *config.QueryConfig, result *metrics.
 	// Update connection stats
 	stats := w.dbManager.GetStats()
 	w.metrics.SetActiveConnections(stats.OpenConnections)
-	
+
 	// Try to determine if it's a SELECT query by checking if it returns rows
 	rows, err := w.dbManager.ExecuteQuery(query.SQL)
 	if err != nil {
