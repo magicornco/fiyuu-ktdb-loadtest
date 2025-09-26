@@ -96,6 +96,10 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/db/info", s.handleDBInfo).Methods("GET")
 	api.HandleFunc("/db/stats", s.handleDBStats).Methods("GET")
 
+	// Connection management
+	api.HandleFunc("/db/cleanup", s.handleDBCleanup).Methods("POST")
+	api.HandleFunc("/db/close", s.handleDBClose).Methods("POST")
+
 	// Prometheus metrics endpoint
 	if s.config.PrometheusEnabled {
 		s.router.HandleFunc(s.config.PrometheusPath, s.handlePrometheusMetrics).Methods("GET")
@@ -276,16 +280,83 @@ func (s *Server) handleDBStats(w http.ResponseWriter, r *http.Request) {
 	s.sendJSONResponse(w, http.StatusOK, stats)
 }
 
+// handleDBCleanup handles POST /api/v1/db/cleanup
+func (s *Server) handleDBCleanup(w http.ResponseWriter, r *http.Request) {
+	logrus.Info("Manual database cleanup requested")
+
+	// Get current stats before cleanup
+	statsBefore := s.dbManager.GetStats()
+
+	// Force close all idle connections
+	s.dbManager.GetDB().SetMaxIdleConns(0)
+	s.dbManager.GetDB().SetMaxOpenConns(0)
+
+	// Get stats after cleanup
+	statsAfter := s.dbManager.GetStats()
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Database connections cleaned up",
+		"stats_before": map[string]interface{}{
+			"open_connections": statsBefore.OpenConnections,
+			"in_use":           statsBefore.InUse,
+			"idle":             statsBefore.Idle,
+		},
+		"stats_after": map[string]interface{}{
+			"open_connections": statsAfter.OpenConnections,
+			"in_use":           statsAfter.InUse,
+			"idle":             statsAfter.Idle,
+		},
+		"timestamp": time.Now(),
+	}
+
+	s.sendJSONResponse(w, http.StatusOK, response)
+}
+
+// handleDBClose handles POST /api/v1/db/close
+func (s *Server) handleDBClose(w http.ResponseWriter, r *http.Request) {
+	logrus.Info("Manual database close requested")
+
+	// Get current stats before close
+	statsBefore := s.dbManager.GetStats()
+
+	// Close database connection
+	err := s.dbManager.Close()
+
+	response := map[string]interface{}{
+		"success": err == nil,
+		"message": "Database connection closed",
+		"error":   nil,
+		"stats_before": map[string]interface{}{
+			"open_connections": statsBefore.OpenConnections,
+			"in_use":           statsBefore.InUse,
+			"idle":             statsBefore.Idle,
+		},
+		"timestamp": time.Now(),
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+		response["message"] = "Error closing database connection"
+		s.sendJSONResponse(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	s.sendJSONResponse(w, http.StatusOK, response)
+}
+
 // handleRoot handles GET /
 func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{
 		"service": "Fiyuu KTDB Web Server",
 		"version": "1.0.0",
 		"endpoints": map[string]string{
-			"health":   "/api/v1/health",
-			"query":    "/api/v1/query",
-			"db_info":  "/api/v1/db/info",
-			"db_stats": "/api/v1/db/stats",
+			"health":     "/api/v1/health",
+			"query":      "/api/v1/query",
+			"db_info":    "/api/v1/db/info",
+			"db_stats":   "/api/v1/db/stats",
+			"db_cleanup": "/api/v1/db/cleanup",
+			"db_close":   "/api/v1/db/close",
 		},
 		"timestamp": time.Now(),
 	}
