@@ -1,0 +1,70 @@
+# Production Stress Test Configuration
+# Bu konfigürasyon production database'de kontrollü stress testi için optimize edilmiştir
+
+database:
+  type: mssql
+  host: 172.16.201.34
+  port: 1433
+  username: sa
+  password: password&45FjGA+ml1nPE)xO?9$enginesqlserverhost172.16.201.34port1433dbnameTFICarrierTrackNEW
+  database: TFICarrierTrackNEW
+  ssl_mode: disable
+  
+  # Orta seviye connection pool ayarları
+  max_open_conns: 200         # Orta seviye
+  max_idle_conns: 50          # Orta seviye
+  conn_max_lifetime: 1h       # Normal lifetime
+  conn_max_idle_time: 10m     # Normal idle time
+
+test:
+  duration: 15m               # Orta test süresi
+  concurrent_users: 100       # Orta seviye concurrent user
+  ramp_up_time: 5m            # Orta ramp-up
+  think_time: 1s              # Orta think time
+  
+  # Çeşitli read-only query'ler
+  queries:
+    - name: "select_system_info"
+      sql: "SELECT @@VERSION as version, GETDATE() as current_time, DB_NAME() as database_name"
+      weight: 25
+      type: "select"
+      
+    - name: "select_table_count"
+      sql: "SELECT COUNT(*) as table_count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+      weight: 20
+      type: "select"
+      
+    - name: "select_connection_info"
+      sql: "SELECT COUNT(*) as connection_count FROM sys.dm_exec_connections"
+      weight: 15
+      type: "select"
+      
+    - name: "select_session_info"
+      sql: "SELECT COUNT(*) as session_count FROM sys.dm_exec_sessions WHERE is_user_process = 1"
+      weight: 15
+      type: "select"
+      
+    - name: "select_database_size"
+      sql: "SELECT SUM(size * 8.0 / 1024) as size_mb FROM sys.database_files"
+      weight: 10
+      type: "select"
+      
+    - name: "select_index_info"
+      sql: "SELECT COUNT(*) as index_count FROM sys.indexes WHERE is_primary_key = 0"
+      weight: 10
+      type: "select"
+      
+    - name: "select_procedure_info"
+      sql: "SELECT COUNT(*) as procedure_count FROM sys.procedures"
+      weight: 5
+      type: "select"
+
+metrics:
+  enabled: true
+  interval: 5s
+  output_file: "production_stress_metrics.json"
+  
+  prometheus:
+    enabled: true
+    port: 8080
+    path: "/metrics"

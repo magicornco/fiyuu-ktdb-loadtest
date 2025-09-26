@@ -1,0 +1,58 @@
+# Fiyuu KTDB Load Test Configuration
+
+# Database configuration
+database:
+  type: mysql                    # mysql, postgres, sqlite
+  host: localhost
+  port: 3306
+  username: root
+  password: password
+  database: testdb
+  ssl_mode: disable              # for postgres: disable, require, verify-ca, verify-full
+  
+  # Connection pool settings
+  max_open_conns: 100
+  max_idle_conns: 10
+  conn_max_lifetime: 1h
+  conn_max_idle_time: 10m
+
+# Load test configuration
+test:
+  duration: 5m                   # Test duration (e.g., 5m, 1h, 30s)
+  concurrent_users: 10           # Number of concurrent users
+  ramp_up_time: 30s              # Time to ramp up all users
+  think_time: 1s                 # Delay between queries per user
+  
+  # Test queries
+  queries:
+    - name: "select_users"
+      sql: "SELECT * FROM users LIMIT 10"
+      weight: 40                 # Relative frequency (1-100)
+      type: "select"
+      
+    - name: "select_orders"
+      sql: "SELECT * FROM orders WHERE status = 'active' LIMIT 5"
+      weight: 30
+      type: "select"
+      
+    - name: "insert_log"
+      sql: "INSERT INTO logs (message, created_at) VALUES ('test log', NOW())"
+      weight: 20
+      type: "insert"
+      
+    - name: "update_user"
+      sql: "UPDATE users SET last_login = NOW() WHERE id = 1"
+      weight: 10
+      type: "update"
+
+# Metrics configuration
+metrics:
+  enabled: true
+  interval: 10s                  # Metrics collection interval
+  output_file: "metrics.json"    # Output file for metrics
+  
+  # Prometheus metrics
+  prometheus:
+    enabled: true               # Enable Prometheus metrics endpoint
+    port: 8080                   # Prometheus metrics port
+    path: "/metrics"             # Prometheus metrics path

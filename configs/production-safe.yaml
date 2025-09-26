@@ -1,0 +1,55 @@
+# Production Safe Load Test Configuration
+# Bu konfigürasyon production database'de güvenli yük testi için optimize edilmiştir
+
+database:
+  type: mssql
+  host: 172.16.201.34
+  port: 1433
+  username: sa
+  password: password&45FjGA+ml1nPE)xO?9$enginesqlserverhost172.16.201.34port1433dbnameTFICarrierTrackNEW
+  database: TFICarrierTrackNEW
+  ssl_mode: disable
+  
+  # Güvenli connection pool ayarları
+  max_open_conns: 50          # Düşük tutuldu
+  max_idle_conns: 10          # Düşük tutuldu
+  conn_max_lifetime: 30m      # Kısa lifetime
+  conn_max_idle_time: 5m      # Kısa idle time
+
+test:
+  duration: 5m                # Kısa test süresi
+  concurrent_users: 20        # Düşük concurrent user
+  ramp_up_time: 2m            # Yavaş ramp-up
+  think_time: 2s              # Uzun think time
+  
+  # Güvenli, read-only query'ler
+  queries:
+    - name: "select_system_info"
+      sql: "SELECT @@VERSION as version, GETDATE() as current_time, DB_NAME() as database_name"
+      weight: 40
+      type: "select"
+      
+    - name: "select_table_count"
+      sql: "SELECT COUNT(*) as table_count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'"
+      weight: 30
+      type: "select"
+      
+    - name: "select_connection_info"
+      sql: "SELECT COUNT(*) as connection_count FROM sys.dm_exec_connections"
+      weight: 20
+      type: "select"
+      
+    - name: "select_session_info"
+      sql: "SELECT COUNT(*) as session_count FROM sys.dm_exec_sessions WHERE is_user_process = 1"
+      weight: 10
+      type: "select"
+
+metrics:
+  enabled: true
+  interval: 10s
+  output_file: "production_safe_metrics.json"
+  
+  prometheus:
+    enabled: true
+    port: 8080
+    path: "/metrics"
