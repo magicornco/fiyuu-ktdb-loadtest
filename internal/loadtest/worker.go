@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 
 	"fiyuu-ktdb-loadtest/internal/config"
@@ -136,6 +137,31 @@ func (w *Worker) selectQuery() *config.QueryConfig {
 	return &w.queries[0]
 }
 
+// logError logs detailed error information to a separate file
+func (w *Worker) logError(queryName, sql, errorMsg string, timestamp time.Time) {
+	errorLogFile := "error_logs.json"
+
+	errorEntry := fmt.Sprintf(`{
+	"timestamp": "%s",
+	"worker_id": %d,
+	"query_name": "%s",
+	"sql": "%s",
+	"error": "%s"
+},`, timestamp.Format(time.RFC3339), w.id, queryName, sql, errorMsg)
+
+	// Append to error log file
+	file, err := os.OpenFile(errorLogFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		logrus.Errorf("Failed to open error log file: %v", err)
+		return
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString(errorEntry + "\n"); err != nil {
+		logrus.Errorf("Failed to write error log: %v", err)
+	}
+}
+
 // executeSelectQuery executes a SELECT query
 func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.QueryResult) {
 	// Log connection pool stats every 100 queries
@@ -150,11 +176,15 @@ func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.Q
 		result.Success = false
 		result.Error = err.Error()
 		logrus.Debugf("Worker %d: SELECT query failed: %v", w.id, err)
+
+		// Log detailed error
+		w.logError(query.Name, query.SQL, err.Error(), time.Now())
 		return
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
 			logrus.Debugf("Worker %d: Failed to close rows: %v", w.id, err)
+			w.logError(query.Name, "rows.Close()", err.Error(), time.Now())
 		}
 	}()
 
@@ -171,6 +201,7 @@ func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.Q
 	if err := rows.Err(); err != nil {
 		result.Success = false
 		result.Error = err.Error()
+		w.logError(query.Name, query.SQL, err.Error(), time.Now())
 		return
 	}
 
@@ -185,6 +216,7 @@ func (w *Worker) executeInsertQuery(query *config.QueryConfig, result *metrics.Q
 		result.Success = false
 		result.Error = err.Error()
 		logrus.Debugf("Worker %d: INSERT query failed: %v", w.id, err)
+		w.logError(query.Name, query.SQL, err.Error(), time.Now())
 		return
 	}
 
@@ -192,6 +224,7 @@ func (w *Worker) executeInsertQuery(query *config.QueryConfig, result *metrics.Q
 	if err != nil {
 		result.Success = false
 		result.Error = err.Error()
+		w.logError(query.Name, query.SQL, err.Error(), time.Now())
 		return
 	}
 

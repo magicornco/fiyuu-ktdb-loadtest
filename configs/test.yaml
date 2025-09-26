@@ -10,23 +10,31 @@ database:
   ssl_mode: disable
   
   # Test için yüksek connection pool ayarları
-  max_open_conns: 15000      # 10k user + 5k buffer
-  max_idle_conns: 10000      # Daha fazla idle connection
+  max_open_conns: 20000      # 15k user + 5k buffer
+  max_idle_conns: 15000      # Daha fazla idle connection
   conn_max_lifetime: 10m     # Daha kısa lifetime
   conn_max_idle_time: 2m     # Daha kısa idle time
   query_timeout: 30s
 
 test:
   duration: 10m               # 10 dakika test süresi
-  concurrent_users: 10000     # 10,000 concurrent user
-  ramp_up_time: 30s           # 30 saniyede 10k kullanıcıya çık
+  concurrent_users: 15000     # 15,000 concurrent user
+  ramp_up_time: 30s           # 30 saniyede 15k kullanıcıya çık
   think_time: 1s              # Normal think time
   
-  # Sadece SELECT @@VERSION testi
+  # Production query'leri ile test
   queries:
-    - name: "select_version_only"
+    - name: "select_version"
       sql: "SELECT @@VERSION as version"
-      weight: 100
+      weight: 20
+      type: "select"
+    - name: "select_order"
+      sql: "SELECT * FROM \"Order\" WHERE orderId = 'ceb2255a-e051-4610-a4be-000000126244'"
+      weight: 40
+      type: "select"
+    - name: "select_order_invoice"
+      sql: "SELECT * FROM \"OrderInvoice\" WHERE orderId = 'ceb2255a-e051-4610-a4be-000000126244'"
+      weight: 40
       type: "select"
 
 metrics:
