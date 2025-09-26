@@ -122,9 +122,11 @@ func setDefaults() {
 func validateConfig(config *Config) error {
 	// Validate database type
 	validDBTypes := map[string]bool{
-		"mysql":    true,
-		"postgres": true,
-		"sqlite":   true,
+		"mysql":     true,
+		"postgres":  true,
+		"sqlite":    true,
+		"mssql":     true,
+		"sqlserver": true,
 	}
 	if !validDBTypes[config.Database.Type] {
 		return fmt.Errorf("invalid database type: %s", config.Database.Type)
