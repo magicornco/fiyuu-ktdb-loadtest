@@ -145,7 +145,11 @@ func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.Q
 		logrus.Debugf("Worker %d: SELECT query failed: %v", w.id, err)
 		return
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			logrus.Debugf("Worker %d: Failed to close rows: %v", w.id, err)
+		}
+	}()
 
 	// Count rows
 	count := 0

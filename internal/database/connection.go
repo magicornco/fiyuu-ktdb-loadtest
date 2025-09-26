@@ -88,7 +88,16 @@ func (m *Manager) GetStats() sql.DBStats {
 
 // ExecuteQuery executes a query and returns the result
 func (m *Manager) ExecuteQuery(query string, args ...interface{}) (*sql.Rows, error) {
-	return m.db.Query(query, args...)
+	// Use context with timeout to ensure connection is returned to pool
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	rows, err := m.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
 }
 
 // ExecuteQueryRow executes a query that returns a single row
@@ -98,7 +107,11 @@ func (m *Manager) ExecuteQueryRow(query string, args ...interface{}) *sql.Row {
 
 // ExecuteExec executes a query that doesn't return rows
 func (m *Manager) ExecuteExec(query string, args ...interface{}) (sql.Result, error) {
-	return m.db.Exec(query, args...)
+	// Use context with timeout to ensure connection is returned to pool
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	return m.db.ExecContext(ctx, query, args...)
 }
 
 // BeginTransaction starts a new transaction

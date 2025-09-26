@@ -184,7 +184,7 @@ func (c *DatabaseConfig) GetDSN() string {
 		if c.SSLMode == "require" {
 			encrypt = "true"
 		}
-		return fmt.Sprintf("server=%s;port=%d;user id=%s;password=%s;database=%s;encrypt=%s",
+		return fmt.Sprintf("server=%s;port=%d;user id=%s;password=%s;database=%s;encrypt=%s;connection timeout=30;command timeout=30",
 			c.Host, c.Port, c.Username, c.Password, c.Database, encrypt)
 	default:
 		return ""
