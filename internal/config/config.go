@@ -29,6 +29,7 @@ type DatabaseConfig struct {
 	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
+	QueryTimeout    time.Duration `mapstructure:"query_timeout"`
 }
 
 // TestConfig holds load test parameters
@@ -102,6 +103,7 @@ func setDefaults() {
 	viper.SetDefault("database.max_idle_conns", 10)
 	viper.SetDefault("database.conn_max_lifetime", "1h")
 	viper.SetDefault("database.conn_max_idle_time", "10m")
+	viper.SetDefault("database.query_timeout", "30s")
 
 	// Test defaults
 	viper.SetDefault("test.duration", "5m")

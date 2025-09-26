@@ -88,8 +88,14 @@ func (m *Manager) GetStats() sql.DBStats {
 
 // ExecuteQuery executes a query and returns the result
 func (m *Manager) ExecuteQuery(query string, args ...interface{}) (*sql.Rows, error) {
+	// Use config timeout or default 30 seconds
+	timeout := m.cfg.QueryTimeout
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+
 	// Use context with timeout to ensure connection is returned to pool
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	rows, err := m.db.QueryContext(ctx, query, args...)
@@ -107,8 +113,14 @@ func (m *Manager) ExecuteQueryRow(query string, args ...interface{}) *sql.Row {
 
 // ExecuteExec executes a query that doesn't return rows
 func (m *Manager) ExecuteExec(query string, args ...interface{}) (sql.Result, error) {
+	// Use config timeout or default 30 seconds
+	timeout := m.cfg.QueryTimeout
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+
 	// Use context with timeout to ensure connection is returned to pool
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	return m.db.ExecContext(ctx, query, args...)
