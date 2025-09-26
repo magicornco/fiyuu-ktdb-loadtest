@@ -10,8 +10,10 @@ echo "====================================================="
 
 # Check if running as root
 if [ "$EUID" -eq 0 ]; then
-    echo "❌ Please do not run this script as root. Run as a regular user."
-    exit 1
+    echo "⚠️  Running as root user. Some operations will be adjusted for root execution."
+    ROOT_USER=true
+else
+    ROOT_USER=false
 fi
 
 # Function to check if command exists
@@ -21,26 +23,49 @@ command_exists() {
 
 # Update system packages
 echo "📦 Updating system packages..."
-sudo apt-get update
-sudo apt-get upgrade -y
+if [ "$ROOT_USER" = true ]; then
+    apt-get update
+    apt-get upgrade -y
+else
+    sudo apt-get update
+    sudo apt-get upgrade -y
+fi
 
 # Install essential packages
 echo "🛠️  Installing essential packages..."
-sudo apt-get install -y \
-    curl \
-    wget \
-    git \
-    build-essential \
-    software-properties-common \
-    apt-transport-https \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    jq \
-    unzip \
-    htop \
-    vim \
-    nano
+if [ "$ROOT_USER" = true ]; then
+    apt-get install -y \
+        curl \
+        wget \
+        git \
+        build-essential \
+        software-properties-common \
+        apt-transport-https \
+        ca-certificates \
+        gnupg \
+        lsb-release \
+        jq \
+        unzip \
+        htop \
+        vim \
+        nano
+else
+    sudo apt-get install -y \
+        curl \
+        wget \
+        git \
+        build-essential \
+        software-properties-common \
+        apt-transport-https \
+        ca-certificates \
+        gnupg \
+        lsb-release \
+        jq \
+        unzip \
+        htop \
+        vim \
+        nano
+fi
 
 # Install Go
 echo "📦 Installing Go..."
@@ -88,12 +113,20 @@ if [ "$install_go" = true ]; then
     # Remove old Go installation if exists
     if [ -d "/usr/local/go" ]; then
         echo "🗑️  Removing old Go installation..."
-        sudo rm -rf /usr/local/go
+        if [ "$ROOT_USER" = true ]; then
+            rm -rf /usr/local/go
+        else
+            sudo rm -rf /usr/local/go
+        fi
     fi
     
     # Install Go
     echo "📦 Installing Go..."
-    sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+    if [ "$ROOT_USER" = true ]; then
+        tar -C /usr/local -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+    else
+        sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+    fi
     
     # Add Go to PATH if not already there
     if ! grep -q "/usr/local/go/bin" ~/.bashrc; then
@@ -114,14 +147,24 @@ fi
 echo "🗄️  Installing SQL Server tools..."
 if [ ! -f "/etc/apt/sources.list.d/mssql-release.list" ]; then
     echo "📥 Adding Microsoft SQL Server repository..."
-    curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-    curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
-    sudo apt-get update
+    if [ "$ROOT_USER" = true ]; then
+        curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+        curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | tee /etc/apt/sources.list.d/mssql-release.list
+        apt-get update
+    else
+        curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+        curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+        sudo apt-get update
+    fi
 fi
 
 # Install SQL Server tools
 echo "📦 Installing SQL Server command line tools..."
-sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+if [ "$ROOT_USER" = true ]; then
+    ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+else
+    sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+fi
 
 # Add SQL Server tools to PATH
 if ! grep -q "/opt/mssql-tools/bin" ~/.bashrc; then
@@ -134,11 +177,17 @@ echo "🐳 Installing Docker (optional)..."
 if ! command_exists docker; then
     echo "📥 Installing Docker..."
     curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    sudo usermod -aG docker $USER
+    if [ "$ROOT_USER" = true ]; then
+        sh get-docker.sh
+        echo "✅ Docker installation completed!"
+        echo "ℹ️  Docker installed for root user"
+    else
+        sudo sh get-docker.sh
+        sudo usermod -aG docker $USER
+        echo "✅ Docker installation completed!"
+        echo "⚠️  Please log out and log back in to use Docker without sudo"
+    fi
     rm get-docker.sh
-    echo "✅ Docker installation completed!"
-    echo "⚠️  Please log out and log back in to use Docker without sudo"
 else
     echo "✅ Docker is already installed"
 fi
@@ -147,8 +196,13 @@ fi
 echo "🐳 Installing Docker Compose (optional)..."
 if ! command_exists docker-compose; then
     echo "📥 Installing Docker Compose..."
-    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
+    if [ "$ROOT_USER" = true ]; then
+        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+    else
+        sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+    fi
     echo "✅ Docker Compose installation completed!"
 else
     echo "✅ Docker Compose is already installed"
@@ -181,22 +235,39 @@ if ! command_exists prometheus; then
     tar -xzf "prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}.tar.gz"
     
     # Install Prometheus
-    sudo mkdir -p /opt/prometheus
-    sudo cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/prometheus /opt/prometheus/
-    sudo cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/promtool /opt/prometheus/
-    sudo cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/consoles /opt/prometheus/
-    sudo cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/console_libraries /opt/prometheus/
-    
-    # Create symlinks
-    sudo ln -sf /opt/prometheus/prometheus /usr/local/bin/prometheus
-    sudo ln -sf /opt/prometheus/promtool /usr/local/bin/promtool
-    
-    # Create prometheus user
-    sudo useradd --no-create-home --shell /bin/false prometheus || true
-    sudo chown -R prometheus:prometheus /opt/prometheus
+    if [ "$ROOT_USER" = true ]; then
+        mkdir -p /opt/prometheus
+        cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/prometheus /opt/prometheus/
+        cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/promtool /opt/prometheus/
+        cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/consoles /opt/prometheus/
+        cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/console_libraries /opt/prometheus/
+        
+        # Create symlinks
+        ln -sf /opt/prometheus/prometheus /usr/local/bin/prometheus
+        ln -sf /opt/prometheus/promtool /usr/local/bin/promtool
+        
+        # Create prometheus user
+        useradd --no-create-home --shell /bin/false prometheus || true
+        chown -R prometheus:prometheus /opt/prometheus
+    else
+        sudo mkdir -p /opt/prometheus
+        sudo cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/prometheus /opt/prometheus/
+        sudo cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/promtool /opt/prometheus/
+        sudo cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/consoles /opt/prometheus/
+        sudo cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/console_libraries /opt/prometheus/
+        
+        # Create symlinks
+        sudo ln -sf /opt/prometheus/prometheus /usr/local/bin/prometheus
+        sudo ln -sf /opt/prometheus/promtool /usr/local/bin/promtool
+        
+        # Create prometheus user
+        sudo useradd --no-create-home --shell /bin/false prometheus || true
+        sudo chown -R prometheus:prometheus /opt/prometheus
+    fi
     
     # Create systemd service for Prometheus
-    sudo tee /etc/systemd/system/prometheus.service > /dev/null <<EOF
+    if [ "$ROOT_USER" = true ]; then
+        tee /etc/systemd/system/prometheus.service > /dev/null <<EOF
 [Unit]
 Description=Prometheus
 Wants=network-online.target
@@ -219,10 +290,17 @@ WantedBy=multi-user.target
 EOF
     
     # Create directories
-    sudo mkdir -p /etc/prometheus
-    sudo mkdir -p /var/lib/prometheus
-    sudo chown -R prometheus:prometheus /var/lib/prometheus
-    sudo chown -R prometheus:prometheus /etc/prometheus
+    if [ "$ROOT_USER" = true ]; then
+        mkdir -p /etc/prometheus
+        mkdir -p /var/lib/prometheus
+        chown -R prometheus:prometheus /var/lib/prometheus
+        chown -R prometheus:prometheus /etc/prometheus
+    else
+        sudo mkdir -p /etc/prometheus
+        sudo mkdir -p /var/lib/prometheus
+        sudo chown -R prometheus:prometheus /var/lib/prometheus
+        sudo chown -R prometheus:prometheus /etc/prometheus
+    fi
     
     # Clean up
     cd - > /dev/null
@@ -237,16 +315,29 @@ fi
 echo "📈 Installing Grafana (native)..."
 if ! command_exists grafana-server; then
     echo "📥 Adding Grafana repository..."
-    wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
-    echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
-    sudo apt-get update
-    
-    echo "📦 Installing Grafana..."
-    sudo apt-get install -y grafana
-    
-    # Enable and start Grafana
-    sudo systemctl enable grafana-server
-    sudo systemctl start grafana-server
+    if [ "$ROOT_USER" = true ]; then
+        wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
+        echo "deb https://packages.grafana.com/oss/deb stable main" | tee /etc/apt/sources.list.d/grafana.list
+        apt-get update
+        
+        echo "📦 Installing Grafana..."
+        apt-get install -y grafana
+        
+        # Enable and start Grafana
+        systemctl enable grafana-server
+        systemctl start grafana-server
+    else
+        wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+        echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+        sudo apt-get update
+        
+        echo "📦 Installing Grafana..."
+        sudo apt-get install -y grafana
+        
+        # Enable and start Grafana
+        sudo systemctl enable grafana-server
+        sudo systemctl start grafana-server
+    fi
     
     echo "✅ Grafana installation completed!"
 else
@@ -271,7 +362,8 @@ chmod +x install-ubuntu.sh
 
 # Create systemd service file (optional)
 echo "⚙️  Creating systemd service file..."
-sudo tee /etc/systemd/system/fiyuu-ktdb.service > /dev/null <<EOF
+if [ "$ROOT_USER" = true ]; then
+    tee /etc/systemd/system/fiyuu-ktdb.service > /dev/null <<EOF
 [Unit]
 Description=Fiyuu KTDB Web Server
 After=network.target
@@ -290,7 +382,28 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-echo "✅ Systemd service file created at /etc/systemd/system/fiyuu-ktdb.service"
+    echo "✅ Systemd service file created at /etc/systemd/system/fiyuu-ktdb.service"
+else
+    sudo tee /etc/systemd/system/fiyuu-ktdb.service > /dev/null <<EOF
+[Unit]
+Description=Fiyuu KTDB Web Server
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$(pwd)
+Environment=PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=GOPATH=$HOME/go
+ExecStart=$(pwd)/fiyuu-ktdb
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    echo "✅ Systemd service file created at /etc/systemd/system/fiyuu-ktdb.service"
+fi
 
 echo ""
 echo "🎉 Installation completed successfully!"
