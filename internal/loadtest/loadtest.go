@@ -174,14 +174,24 @@ func (lt *LoadTester) GetStats() map[string]interface{} {
 	stats["active_workers"] = len(lt.workers)
 	stats["target_workers"] = lt.config.Test.ConcurrentUsers
 
-	// Update active connections metric from first worker's database stats
-	if len(lt.workers) > 0 && lt.workers[0] != nil {
-		dbStats := lt.workers[0].GetDBStats()
-		lt.metrics.SetActiveConnections(dbStats.OpenConnections)
-		stats["active_connections"] = dbStats.OpenConnections
-		stats["connections_in_use"] = dbStats.InUse
-		stats["connections_idle"] = dbStats.Idle
+	// Update active connections metric from all workers' database stats
+	totalOpenConnections := 0
+	totalInUseConnections := 0
+	totalIdleConnections := 0
+
+	for _, worker := range lt.workers {
+		if worker != nil {
+			dbStats := worker.GetDBStats()
+			totalOpenConnections += dbStats.OpenConnections
+			totalInUseConnections += dbStats.InUse
+			totalIdleConnections += dbStats.Idle
+		}
 	}
+
+	lt.metrics.SetActiveConnections(totalOpenConnections)
+	stats["active_connections"] = totalOpenConnections
+	stats["connections_in_use"] = totalInUseConnections
+	stats["connections_idle"] = totalIdleConnections
 
 	return stats
 }

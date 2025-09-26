@@ -32,7 +32,17 @@ type Worker struct {
 
 // NewWorker creates a new load test worker
 func NewWorker(id int, cfg *config.Config, metrics *metrics.Collector) (*Worker, error) {
-	dbManager, err := database.NewManager(&cfg.Database)
+	// Create a copy of database config for this worker
+	dbConfig := cfg.Database
+
+	// Each worker should have its own connection pool
+	// Set smaller pool size per worker to avoid connection exhaustion
+	dbConfig.MaxOpenConns = 3 // Each worker gets 3 connections max
+	dbConfig.MaxIdleConns = 1 // Each worker keeps 1 idle connection
+	dbConfig.ConnMaxLifetime = 5 * time.Minute
+	dbConfig.ConnMaxIdleTime = 1 * time.Minute
+
+	dbManager, err := database.NewManager(&dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database manager: %w", err)
 	}

@@ -18,8 +18,8 @@ database:
 
 test:
   duration: 10m               # 10 dakika test süresi
-  concurrent_users: 100     # 15,000 concurrent user
-  ramp_up_time: 30s           # 30 saniyede 15k kullanıcıya çık
+  concurrent_users: 500     # 500 concurrent user
+  ramp_up_time: 30s           # 30 saniyede 500 kullanıcıya çık
   think_time: 1s              # Normal think time
   
   # Production query'leri ile test
