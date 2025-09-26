@@ -18,7 +18,7 @@ type LoadTester struct {
 	metrics   *metrics.Collector
 	workers   []*Worker
 	wg        sync.WaitGroup
-	closeOnce sync.Once  // Prevent double close
+	closeOnce sync.Once // Prevent double close
 }
 
 // NewLoadTester creates a new load tester
@@ -147,7 +147,7 @@ func (lt *LoadTester) Close() error {
 
 	lt.closeOnce.Do(func() {
 		logrus.Info("Closing all workers and cleaning up connections...")
-		
+
 		for i, worker := range lt.workers {
 			if worker != nil {
 				if err := worker.Close(); err != nil {
@@ -159,7 +159,7 @@ func (lt *LoadTester) Close() error {
 
 		// Clear workers slice
 		lt.workers = nil
-		
+
 		lt.metrics.Close()
 
 		logrus.Info("All connections cleaned up")
@@ -173,5 +173,15 @@ func (lt *LoadTester) GetStats() map[string]interface{} {
 	stats := lt.metrics.GetStats()
 	stats["active_workers"] = len(lt.workers)
 	stats["target_workers"] = lt.config.Test.ConcurrentUsers
+
+	// Update active connections metric from first worker's database stats
+	if len(lt.workers) > 0 && lt.workers[0] != nil {
+		dbStats := lt.workers[0].GetDBStats()
+		lt.metrics.SetActiveConnections(dbStats.OpenConnections)
+		stats["active_connections"] = dbStats.OpenConnections
+		stats["connections_in_use"] = dbStats.InUse
+		stats["connections_idle"] = dbStats.Idle
+	}
+
 	return stats
 }

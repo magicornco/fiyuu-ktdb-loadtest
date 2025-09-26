@@ -2,6 +2,7 @@ package loadtest
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"math/rand"
 	"os"
@@ -178,11 +179,14 @@ func (w *Worker) logError(queryName, sql, errorMsg string, timestamp time.Time) 
 
 // executeSelectQuery executes a SELECT query
 func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.QueryResult) {
-	// Log connection pool stats every 100 queries
+	// Log connection pool stats every 100 queries and update metrics
 	if w.id%100 == 0 {
 		stats := w.dbManager.GetStats()
 		logrus.Debugf("Worker %d: Pool stats - Open: %d, InUse: %d, Idle: %d, WaitCount: %d",
 			w.id, stats.OpenConnections, stats.InUse, stats.Idle, stats.WaitCount)
+
+		// Update active connections metric
+		w.metrics.SetActiveConnections(stats.OpenConnections)
 	}
 
 	rows, err := w.dbManager.ExecuteQuery(query.SQL)
@@ -336,6 +340,14 @@ func (w *Worker) thinkTime() {
 		thinkTime := time.Duration(float64(w.config.Test.ThinkTime) * randomFactor)
 		time.Sleep(thinkTime)
 	}
+}
+
+// GetDBStats returns database connection statistics
+func (w *Worker) GetDBStats() sql.DBStats {
+	if w.dbManager != nil {
+		return w.dbManager.GetStats()
+	}
+	return sql.DBStats{}
 }
 
 // Close closes the worker and its database connection
