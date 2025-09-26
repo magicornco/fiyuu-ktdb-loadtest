@@ -35,13 +35,13 @@ type Collector struct {
 	failedQueries     prometheus.Counter
 
 	// Internal state
-	outputFile     string
-	interval       time.Duration
-	prometheusName string
-	activeUsers    int
-	stats          map[string]interface{}
-	mu             sync.RWMutex
-	stopChan       chan struct{}
+	outputFile       string
+	interval         time.Duration
+	prometheusName   string
+	activeUsersCount int
+	stats            map[string]interface{}
+	mu               sync.RWMutex
+	stopChan         chan struct{}
 }
 
 // NewCollector creates a new metrics collector
@@ -156,7 +156,7 @@ func (c *Collector) Start() {
 func (c *Collector) SetActiveUsers(count int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.activeUsers = count
+	c.activeUsersCount = count
 	c.activeUsers.Set(float64(count))
 }
 
@@ -214,7 +214,7 @@ func (c *Collector) GetStats() map[string]interface{} {
 	for k, v := range c.stats {
 		stats[k] = v
 	}
-	stats["active_users"] = c.activeUsers
+	stats["active_users"] = c.activeUsersCount
 	return stats
 }
 
@@ -224,7 +224,7 @@ func (c *Collector) PrintStats() {
 	defer c.mu.RUnlock()
 
 	logrus.Info("=== Load Test Statistics ===")
-	logrus.Infof("Active Users: %d", c.activeUsers)
+	logrus.Infof("Active Users: %d", c.activeUsersCount)
 
 	for queryName, queryStats := range c.stats {
 		if stats, ok := queryStats.(map[string]interface{}); ok {
