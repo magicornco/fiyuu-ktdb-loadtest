@@ -1,0 +1,36 @@
+# Prometheus Configuration for Native Installation
+# This file should be copied to /etc/prometheus/prometheus.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Fiyuu KTDB Web Server
+  - job_name: 'fiyuu-ktdb'
+    static_configs:
+      - targets: ['localhost:8080']
+    scrape_interval: 5s
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # Node Exporter (if installed)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 15s
+
+  # SQL Server Exporter (if installed)
+  - job_name: 'sqlserver-exporter'
+    static_configs:
+      - targets: ['localhost:9399']
+    scrape_interval: 15s

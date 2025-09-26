@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Fiyuu KTDB Web Server - CentOS/RHEL/Rocky Linux Installation Script
-# Optimized for CentOS 8+, RHEL 8+, Rocky Linux 8+
+# Fiyuu KTDB Web Server - Ubuntu/Debian Installation Script
+# Optimized for Ubuntu 20.04+ and Debian 11+
 
 set -e
 
-echo "🚀 Fiyuu KTDB Web Server - CentOS/RHEL/Rocky Linux Installation"
-echo "==============================================================="
+echo "🚀 Fiyuu KTDB Web Server - Ubuntu/Debian Installation"
+echo "====================================================="
 
 # Check if running as root
 if [ "$EUID" -eq 0 ]; then
@@ -19,42 +19,28 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Detect distribution
-if [ -f /etc/redhat-release ]; then
-    DISTRO=$(cat /etc/redhat-release | awk '{print $1}')
-    VERSION=$(cat /etc/redhat-release | awk '{print $4}' | cut -d. -f1)
-else
-    echo "❌ This script is designed for Red Hat-based distributions"
-    exit 1
-fi
-
-echo "🖥️  Detected distribution: $DISTRO $VERSION"
-
 # Update system packages
 echo "📦 Updating system packages..."
-sudo dnf update -y
-
-# Install EPEL repository
-echo "📦 Installing EPEL repository..."
-sudo dnf install -y epel-release
+sudo apt-get update
+sudo apt-get upgrade -y
 
 # Install essential packages
 echo "🛠️  Installing essential packages..."
-sudo dnf install -y \
+sudo apt-get install -y \
     curl \
     wget \
     git \
-    gcc \
-    gcc-c++ \
-    make \
+    build-essential \
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
     jq \
     unzip \
     htop \
     vim \
-    nano \
-    which \
-    tar \
-    gzip
+    nano
 
 # Install Go
 echo "📦 Installing Go..."
@@ -126,16 +112,16 @@ fi
 
 # Install SQL Server tools
 echo "🗄️  Installing SQL Server tools..."
-if [ ! -f "/etc/yum.repos.d/mssql-release.repo" ]; then
+if [ ! -f "/etc/apt/sources.list.d/mssql-release.list" ]; then
     echo "📥 Adding Microsoft SQL Server repository..."
-    sudo curl -o /etc/yum.repos.d/mssql-release.repo https://packages.microsoft.com/config/rhel/8/mssql-release.repo
-    sudo dnf clean all
-    sudo dnf makecache
+    curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+    curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+    sudo apt-get update
 fi
 
 # Install SQL Server tools
 echo "📦 Installing SQL Server command line tools..."
-sudo ACCEPT_EULA=Y dnf install -y mssql-tools unixODBC-devel
+sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
 
 # Add SQL Server tools to PATH
 if ! grep -q "/opt/mssql-tools/bin" ~/.bashrc; then
@@ -147,18 +133,17 @@ fi
 echo "🐳 Installing Docker (optional)..."
 if ! command_exists docker; then
     echo "📥 Installing Docker..."
-    sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-    sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    sudo systemctl enable docker
-    sudo systemctl start docker
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
     sudo usermod -aG docker $USER
+    rm get-docker.sh
     echo "✅ Docker installation completed!"
     echo "⚠️  Please log out and log back in to use Docker without sudo"
 else
     echo "✅ Docker is already installed"
 fi
 
-# Install Docker Compose (if not using plugin)
+# Install Docker Compose (optional)
 echo "🐳 Installing Docker Compose (optional)..."
 if ! command_exists docker-compose; then
     echo "📥 Installing Docker Compose..."
@@ -167,6 +152,105 @@ if ! command_exists docker-compose; then
     echo "✅ Docker Compose installation completed!"
 else
     echo "✅ Docker Compose is already installed"
+fi
+
+# Install Prometheus (native)
+echo "📊 Installing Prometheus (native)..."
+if ! command_exists prometheus; then
+    echo "📥 Downloading Prometheus..."
+    PROMETHEUS_VERSION="2.47.0"
+    ARCH=$(uname -m)
+    
+    case $ARCH in
+        x86_64)
+            PROMETHEUS_ARCH="amd64"
+            ;;
+        arm64|aarch64)
+            PROMETHEUS_ARCH="arm64"
+            ;;
+        *)
+            echo "❌ Unsupported architecture for Prometheus: $ARCH"
+            exit 1
+            ;;
+    esac
+    
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    
+    wget -q "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}.tar.gz"
+    tar -xzf "prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}.tar.gz"
+    
+    # Install Prometheus
+    sudo mkdir -p /opt/prometheus
+    sudo cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/prometheus /opt/prometheus/
+    sudo cp prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/promtool /opt/prometheus/
+    sudo cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/consoles /opt/prometheus/
+    sudo cp -r prometheus-${PROMETHEUS_VERSION}.linux-${PROMETHEUS_ARCH}/console_libraries /opt/prometheus/
+    
+    # Create symlinks
+    sudo ln -sf /opt/prometheus/prometheus /usr/local/bin/prometheus
+    sudo ln -sf /opt/prometheus/promtool /usr/local/bin/promtool
+    
+    # Create prometheus user
+    sudo useradd --no-create-home --shell /bin/false prometheus || true
+    sudo chown -R prometheus:prometheus /opt/prometheus
+    
+    # Create systemd service for Prometheus
+    sudo tee /etc/systemd/system/prometheus.service > /dev/null <<EOF
+[Unit]
+Description=Prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/opt/prometheus/prometheus \\
+    --config.file=/etc/prometheus/prometheus.yml \\
+    --storage.tsdb.path=/var/lib/prometheus/ \\
+    --web.console.templates=/opt/prometheus/consoles \\
+    --web.console.libraries=/opt/prometheus/console_libraries \\
+    --web.listen-address=0.0.0.0:9090 \\
+    --web.enable-lifecycle
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Create directories
+    sudo mkdir -p /etc/prometheus
+    sudo mkdir -p /var/lib/prometheus
+    sudo chown -R prometheus:prometheus /var/lib/prometheus
+    sudo chown -R prometheus:prometheus /etc/prometheus
+    
+    # Clean up
+    cd - > /dev/null
+    rm -rf "$TEMP_DIR"
+    
+    echo "✅ Prometheus installation completed!"
+else
+    echo "✅ Prometheus is already installed"
+fi
+
+# Install Grafana (native)
+echo "📈 Installing Grafana (native)..."
+if ! command_exists grafana-server; then
+    echo "📥 Adding Grafana repository..."
+    wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+    echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee /etc/apt/sources.list.d/grafana.list
+    sudo apt-get update
+    
+    echo "📦 Installing Grafana..."
+    sudo apt-get install -y grafana
+    
+    # Enable and start Grafana
+    sudo systemctl enable grafana-server
+    sudo systemctl start grafana-server
+    
+    echo "✅ Grafana installation completed!"
+else
+    echo "✅ Grafana is already installed"
 fi
 
 # Create environment file
@@ -183,7 +267,7 @@ fi
 echo "🔧 Making scripts executable..."
 chmod +x run.sh
 chmod +x install.sh
-chmod +x install-centos.sh
+chmod +x install-ubuntu.sh
 
 # Create systemd service file (optional)
 echo "⚙️  Creating systemd service file..."
@@ -235,11 +319,20 @@ echo "🔗 Useful endpoints:"
 echo "   Health Check: http://localhost:8080/api/v1/health"
 echo "   Default Query: http://localhost:8080/api/v1/query"
 echo "   Database Info: http://localhost:8080/api/v1/db/info"
+echo "   Prometheus Metrics: http://localhost:8080/metrics"
+echo "   Prometheus UI: http://localhost:9090"
+echo "   Grafana Dashboard: http://localhost:3000 (admin/admin)"
 echo ""
 echo "⚙️  Systemd service commands:"
 echo "   sudo systemctl enable fiyuu-ktdb    # Enable auto-start"
 echo "   sudo systemctl start fiyuu-ktdb     # Start service"
 echo "   sudo systemctl status fiyuu-ktdb    # Check status"
 echo "   sudo systemctl stop fiyuu-ktdb      # Stop service"
+echo ""
+echo "📊 Monitoring services:"
+echo "   sudo systemctl enable prometheus    # Enable Prometheus"
+echo "   sudo systemctl start prometheus     # Start Prometheus"
+echo "   sudo systemctl enable grafana-server # Enable Grafana"
+echo "   sudo systemctl start grafana-server  # Start Grafana"
 echo ""
 echo "📚 For more information, see README-SERVER.md"
