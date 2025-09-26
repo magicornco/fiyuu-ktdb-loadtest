@@ -10,8 +10,8 @@ database:
   ssl_mode: disable
   
   # Test için güvenli connection pool ayarları
-  max_open_conns: 1000       # Güvenli limit
-  max_idle_conns: 500        # Güvenli idle limit
+  max_open_conns: 30000       # Güvenli limit
+  max_idle_conns: 5000        # Güvenli idle limit
   conn_max_lifetime: 5m      # Daha kısa lifetime
   conn_max_idle_time: 1m     # Daha kısa idle time
   query_timeout: 30s
