@@ -2,10 +2,8 @@ package loadtest
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 
 	"fiyuu-ktdb-loadtest/internal/config"
@@ -17,15 +15,15 @@ import (
 
 // Worker represents a load test worker
 type Worker struct {
-	id           int
-	config       *config.Config
-	dbManager    *database.Manager
-	metrics      *metrics.Collector
-	queries      []config.QueryConfig
-	weightSum    int
-	stopChan     chan struct{}
-	ctx          context.Context
-	cancel       context.CancelFunc
+	id        int
+	config    *config.Config
+	dbManager *database.Manager
+	metrics   *metrics.Collector
+	queries   []config.QueryConfig
+	weightSum int
+	stopChan  chan struct{}
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 // NewWorker creates a new load test worker
