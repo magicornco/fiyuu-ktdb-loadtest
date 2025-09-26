@@ -1,0 +1,39 @@
+# Test Configuration - Sadece SELECT @@VERSION testi
+
+database:
+  type: sqlserver
+  host: 10.54.41.247
+  port: 1433
+  username: fiyuu_banned_lines
+  password: "&45FjGA+ml1nPE)xO?9$"
+  database: TFICarrierTrackNEW
+  ssl_mode: disable
+  
+  # Test için basit connection pool ayarları
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 30m
+  conn_max_idle_time: 5m
+
+test:
+  duration: 2m                # Kısa test süresi
+  concurrent_users: 5         # Düşük concurrent user
+  ramp_up_time: 30s           # Hızlı ramp-up
+  think_time: 1s              # Normal think time
+  
+  # Sadece SELECT @@VERSION testi
+  queries:
+    - name: "select_version_only"
+      sql: "SELECT @@VERSION as version"
+      weight: 100
+      type: "select"
+
+metrics:
+  enabled: true
+  interval: 10s
+  output_file: "test_metrics.json"
+  
+  prometheus:
+    enabled: true
+    port: 8080
+    path: "/metrics"

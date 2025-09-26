@@ -22,7 +22,7 @@ test:
   
   queries:
     - name: "select_system_info"
-      sql: "SELECT @@VERSION as version, GETDATE() as current_time, DB_NAME() as database_name"
+      sql: "SELECT @@VERSION as version, GETDATE() as current_datetime, DB_NAME() as database_name"
       weight: 30
       type: "select"
       
