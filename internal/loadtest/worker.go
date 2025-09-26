@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 
 	"fiyuu-ktdb-loadtest/internal/config"
@@ -25,6 +26,7 @@ type Worker struct {
 	stopChan  chan struct{}
 	ctx       context.Context
 	cancel    context.CancelFunc
+	stopOnce  sync.Once // Prevent double stop
 }
 
 // NewWorker creates a new load test worker
@@ -75,17 +77,10 @@ func (w *Worker) Start() {
 
 // Stop stops the worker
 func (w *Worker) Stop() {
-	w.cancel()
-
-	// Check if channel is already closed to prevent panic
-	select {
-	case <-w.stopChan:
-		// Channel is already closed
-		return
-	default:
-		// Channel is open, close it
+	w.stopOnce.Do(func() {
+		w.cancel()
 		close(w.stopChan)
-	}
+	})
 }
 
 // executeQuery executes a randomly selected query

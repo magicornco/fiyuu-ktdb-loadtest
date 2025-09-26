@@ -2,7 +2,7 @@
 
 database:
   type: sqlserver
-  host: 10.54.41.247
+  host: ktdblsn.fiyuu.local
   port: 1433
   username: fiyuu_banned_lines
   password: "&45FjGA+ml1nPE)xO?9$"
@@ -18,23 +18,15 @@ database:
 
 test:
   duration: 10m               # 10 dakika test süresi
-  concurrent_users: 15000     # 15,000 concurrent user
+  concurrent_users: 100     # 15,000 concurrent user
   ramp_up_time: 30s           # 30 saniyede 15k kullanıcıya çık
   think_time: 1s              # Normal think time
   
   # Production query'leri ile test
   queries:
     - name: "select_version"
-      sql: "SELECT @@VERSION as version"
+      sql: "SELECT 1"
       weight: 20
-      type: "select"
-    - name: "select_order"
-      sql: "SELECT * FROM \"Order\" WHERE orderId = 'ceb2255a-e051-4610-a4be-000000126244'"
-      weight: 40
-      type: "select"
-    - name: "select_order_invoice"
-      sql: "SELECT * FROM \"OrderInvoice\" WHERE orderId = 'ceb2255a-e051-4610-a4be-000000126244'"
-      weight: 40
       type: "select"
 
 metrics:

@@ -31,8 +31,8 @@ logs/
 
 # Metrics files
 *.json
+metrics/
 results/
-# Note: internal/metrics/ is source code, not output metrics
 
 # Database files
 *.db
