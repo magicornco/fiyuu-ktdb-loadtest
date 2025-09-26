@@ -37,6 +37,9 @@ func NewManager(cfg *config.DatabaseConfig) (*Manager, error) {
 	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 	db.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
 
+	// Set connection wait timeout to prevent blocking
+	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+
 	// Test connection
 	if err := db.Ping(); err != nil {
 		db.Close()

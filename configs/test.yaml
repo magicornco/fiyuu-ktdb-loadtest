@@ -10,10 +10,10 @@ database:
   ssl_mode: disable
   
   # Test için yüksek connection pool ayarları
-  max_open_conns: 10000
-  max_idle_conns: 5000
-  conn_max_lifetime: 30m
-  conn_max_idle_time: 5m
+  max_open_conns: 15000      # 10k user + 5k buffer
+  max_idle_conns: 10000      # Daha fazla idle connection
+  conn_max_lifetime: 10m     # Daha kısa lifetime
+  conn_max_idle_time: 2m     # Daha kısa idle time
   query_timeout: 30s
 
 test:

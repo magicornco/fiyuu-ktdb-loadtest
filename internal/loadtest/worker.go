@@ -138,6 +138,13 @@ func (w *Worker) selectQuery() *config.QueryConfig {
 
 // executeSelectQuery executes a SELECT query
 func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.QueryResult) {
+	// Log connection pool stats every 100 queries
+	if w.id%100 == 0 {
+		stats := w.dbManager.GetStats()
+		logrus.Debugf("Worker %d: Pool stats - Open: %d, InUse: %d, Idle: %d, WaitCount: %d",
+			w.id, stats.OpenConnections, stats.InUse, stats.Idle, stats.WaitCount)
+	}
+
 	rows, err := w.dbManager.ExecuteQuery(query.SQL)
 	if err != nil {
 		result.Success = false
