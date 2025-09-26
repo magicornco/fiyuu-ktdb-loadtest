@@ -63,7 +63,23 @@ func (m *Manager) GetDB() *sql.DB {
 // Close closes the database connection
 func (m *Manager) Close() error {
 	close(m.done)
-	return m.db.Close()
+
+	// Force close all connections
+	if m.db != nil {
+		// Close all idle connections
+		m.db.SetMaxIdleConns(0)
+		m.db.SetMaxOpenConns(0)
+
+		// Close the database
+		err := m.db.Close()
+		if err != nil {
+			logrus.Errorf("Error closing database: %v", err)
+		}
+
+		logrus.Debugf("Database connections closed")
+	}
+
+	return nil
 }
 
 // HealthCheck performs a health check on the database

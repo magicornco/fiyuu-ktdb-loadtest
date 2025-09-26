@@ -144,14 +144,21 @@ func (lt *LoadTester) stopWorkers() {
 func (lt *LoadTester) Close() error {
 	var lastErr error
 
-	for _, worker := range lt.workers {
+	logrus.Info("Closing all workers and cleaning up connections...")
+	
+	for i, worker := range lt.workers {
 		if err := worker.Close(); err != nil {
 			lastErr = err
-			logrus.Errorf("Failed to close worker: %v", err)
+			logrus.Errorf("Failed to close worker %d: %v", i, err)
 		}
 	}
 
+	// Clear workers slice
+	lt.workers = nil
+	
 	lt.metrics.Close()
+	
+	logrus.Info("All connections cleaned up")
 	return lastErr
 }
 

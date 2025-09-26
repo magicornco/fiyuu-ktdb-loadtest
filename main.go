@@ -190,6 +190,11 @@ func runLoadTest() error {
 		return fmt.Errorf("load test failed: %w", err)
 	}
 
+	// Clean up all connections
+	if err := loadTester.Close(); err != nil {
+		logrus.Errorf("Error during cleanup: %v", err)
+	}
+
 	logrus.Info("Load test completed successfully")
 	return nil
 }

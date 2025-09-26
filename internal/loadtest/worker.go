@@ -337,5 +337,12 @@ func (w *Worker) thinkTime() {
 // Close closes the worker and its database connection
 func (w *Worker) Close() error {
 	w.Stop()
-	return w.dbManager.Close()
+	
+	// Force close all connections
+	if w.dbManager != nil {
+		w.dbManager.Close()
+	}
+	
+	logrus.Debugf("Worker %d: Closed and cleaned up connections", w.id)
+	return nil
 }
