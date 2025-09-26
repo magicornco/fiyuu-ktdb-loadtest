@@ -26,7 +26,7 @@ func NewManager(cfg *config.DatabaseConfig) (*Manager, error) {
 		return nil, fmt.Errorf("unsupported database type: %s", cfg.Type)
 	}
 
-	db, err := sql.Open(cfg.Type, dsn)
+	db, err := sql.Open("sqlserver", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database connection: %w", err)
 	}
