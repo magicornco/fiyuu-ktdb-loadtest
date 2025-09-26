@@ -1,11 +1,11 @@
 # Production SQL Server Load Test Configuration
 
 database:
-  type: mssql
-  host: 172.16.201.34
+  type: sqlserver
+  host: 10.54.41.247
   port: 1433
-  username: sa
-  password: password&45FjGA+ml1nPE)xO?9$enginesqlserverhost172.16.201.34port1433dbnameTFICarrierTrackNEW
+  username: fiyuu_banned_lines
+  password: &45FjGA+ml1nPE)xO?9$
   database: TFICarrierTrackNEW
   ssl_mode: disable
   
