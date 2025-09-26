@@ -6,7 +6,7 @@ database:
   host: 10.54.41.247
   port: 1433
   username: fiyuu_banned_lines
-  password: &45FjGA+ml1nPE)xO?9$
+  password: "&45FjGA+ml1nPE)xO?9$"
   database: TFICarrierTrackNEW
   ssl_mode: disable
   
