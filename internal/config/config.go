@@ -176,6 +176,14 @@ func (c *DatabaseConfig) GetDSN() string {
 		return dsn
 	case "sqlite":
 		return c.Database
+	case "mssql", "sqlserver":
+		// SQL Server connection string
+		encrypt := "disable"
+		if c.SSLMode == "require" {
+			encrypt = "true"
+		}
+		return fmt.Sprintf("server=%s;port=%d;user id=%s;password=%s;database=%s;encrypt=%s",
+			c.Host, c.Port, c.Username, c.Password, c.Database, encrypt)
 	default:
 		return ""
 	}
