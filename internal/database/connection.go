@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -64,7 +65,7 @@ func (m *Manager) Close() error {
 
 // HealthCheck performs a health check on the database
 func (m *Manager) HealthCheck() error {
-	ctx, cancel := time.After(5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	done := make(chan error, 1)
@@ -75,7 +76,7 @@ func (m *Manager) HealthCheck() error {
 	select {
 	case err := <-done:
 		return err
-	case <-ctx:
+	case <-ctx.Done():
 		return fmt.Errorf("health check timeout")
 	}
 }
