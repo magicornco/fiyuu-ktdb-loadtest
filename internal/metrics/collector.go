@@ -30,6 +30,9 @@ type Collector struct {
 	errorsTotal       prometheus.Counter
 	queriesExecuted   prometheus.Counter
 	queryDuration     prometheus.Histogram
+	activeUsers       prometheus.Gauge
+	successfulQueries prometheus.Counter
+	failedQueries     prometheus.Counter
 
 	// Internal state
 	outputFile     string
@@ -69,6 +72,18 @@ func NewCollector() *Collector {
 			Name:    "fiyuu_ktdb_query_duration_seconds",
 			Help:    "Query execution duration in seconds",
 			Buckets: prometheus.DefBuckets,
+		}),
+		activeUsers: promauto.NewGauge(prometheus.GaugeOpts{
+			Name: "fiyuu_ktdb_active_users",
+			Help: "Number of active load test users",
+		}),
+		successfulQueries: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "fiyuu_ktdb_successful_queries_total",
+			Help: "Total number of successful queries",
+		}),
+		failedQueries: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "fiyuu_ktdb_failed_queries_total",
+			Help: "Total number of failed queries",
 		}),
 		stats:    make(map[string]interface{}),
 		stopChan: make(chan struct{}),
@@ -142,6 +157,7 @@ func (c *Collector) SetActiveUsers(count int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.activeUsers = count
+	c.activeUsers.Set(float64(count))
 }
 
 // RecordQuery records a query execution with QueryResult
@@ -149,8 +165,11 @@ func (c *Collector) RecordQuery(result QueryResult) {
 	c.queriesExecuted.Inc()
 	c.queryDuration.Observe(result.Duration.Seconds())
 
-	if !result.Success {
+	if result.Success {
+		c.successfulQueries.Inc()
+	} else {
 		c.errorsTotal.Inc()
+		c.failedQueries.Inc()
 	}
 
 	// Update internal stats
