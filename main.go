@@ -163,6 +163,18 @@ func runLoadTest() error {
 	metricsCollector := metrics.NewCollector()
 	defer metricsCollector.Close()
 
+	// Start Prometheus metrics server if enabled
+	if cfg.Metrics.Prometheus.Enabled {
+		go func() {
+			http.Handle(cfg.Metrics.Prometheus.Path, promhttp.Handler())
+			addr := fmt.Sprintf(":%d", cfg.Metrics.Prometheus.Port)
+			logrus.Infof("Starting Prometheus metrics server on %s%s", addr, cfg.Metrics.Prometheus.Path)
+			if err := http.ListenAndServe(addr, nil); err != nil {
+				logrus.Errorf("Prometheus metrics server error: %v", err)
+			}
+		}()
+	}
+
 	// Create and run load test
 	loadTester := loadtest.NewLoadTester(cfg, metricsCollector)
 
