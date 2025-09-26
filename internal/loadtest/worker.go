@@ -92,9 +92,13 @@ func (w *Worker) executeQuery() {
 		Timestamp: start,
 	}
 
+	// Log query execution
+	logrus.Debugf("Worker %d: Executing query: %s", w.id, query.Name)
+
 	defer func() {
 		result.Duration = time.Since(start)
 		w.metrics.RecordQuery(result)
+		logrus.Debugf("Worker %d: Query %s completed in %v", w.id, query.Name, result.Duration)
 	}()
 
 	// Execute the query based on its type
@@ -139,7 +143,13 @@ func (w *Worker) selectQuery() *config.QueryConfig {
 
 // logError logs detailed error information to a separate file
 func (w *Worker) logError(queryName, sql, errorMsg string, timestamp time.Time) {
-	errorLogFile := "error_logs.json"
+	errorLogFile := "logs/error_logs.json"
+
+	// Create logs directory if it doesn't exist
+	if err := os.MkdirAll("logs", 0755); err != nil {
+		logrus.Errorf("Failed to create logs directory: %v", err)
+		return
+	}
 
 	errorEntry := fmt.Sprintf(`{
 	"timestamp": "%s",

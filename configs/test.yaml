@@ -40,7 +40,7 @@ test:
 metrics:
   enabled: true
   interval: 10s
-  output_file: "test_metrics.json"
+  output_file: "logs/test_metrics.json"
   
   prometheus:
     enabled: true
