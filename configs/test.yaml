@@ -12,8 +12,8 @@ database:
   # Test için yüksek connection pool ayarları
   max_open_conns: 20000      # 15k user + 5k buffer
   max_idle_conns: 15000      # Daha fazla idle connection
-  conn_max_lifetime: 10m     # Daha kısa lifetime
-  conn_max_idle_time: 2m     # Daha kısa idle time
+  conn_max_lifetime: 5m      # Daha kısa lifetime
+  conn_max_idle_time: 1m     # Daha kısa idle time
   query_timeout: 30s
 
 test:

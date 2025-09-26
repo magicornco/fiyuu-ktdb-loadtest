@@ -179,6 +179,13 @@ func runLoadTest() error {
 
 	// Create and run load test
 	loadTester := loadtest.NewLoadTester(cfg, metricsCollector)
+	defer func() {
+		// Ensure cleanup happens even if panic occurs
+		logrus.Info("Ensuring cleanup...")
+		if err := loadTester.Close(); err != nil {
+			logrus.Errorf("Error during deferred cleanup: %v", err)
+		}
+	}()
 
 	logrus.Info("Starting load test...")
 	logrus.Infof("Database: %s", cfg.Database.Type)
@@ -186,15 +193,19 @@ func runLoadTest() error {
 	logrus.Infof("Concurrent users: %d", cfg.Test.ConcurrentUsers)
 	logrus.Infof("Ramp-up time: %v", cfg.Test.RampUpTime)
 
+	// Run load test
 	if err := loadTester.Run(ctx); err != nil {
-		return fmt.Errorf("load test failed: %w", err)
+		logrus.Errorf("Load test failed: %v", err)
 	}
 
-	// Clean up all connections
+	// Always clean up connections, even if test failed
+	logrus.Info("Cleaning up connections...")
 	if err := loadTester.Close(); err != nil {
 		logrus.Errorf("Error during cleanup: %v", err)
+	} else {
+		logrus.Info("All connections cleaned up successfully")
 	}
 
-	logrus.Info("Load test completed successfully")
+	logrus.Info("Load test completed")
 	return nil
 }
