@@ -189,15 +189,17 @@ func (w *Worker) logError(queryName, sql, errorMsg string, timestamp time.Time) 
 
 // executeSelectQuery executes a SELECT query
 func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.QueryResult) {
-	// Log connection pool stats every 100 queries and update metrics
+	// Update connection stats on every query (not just every 100)
+	stats := w.dbManager.GetStats()
+
+	// Log connection pool stats every 100 queries
 	if w.id%100 == 0 {
-		stats := w.dbManager.GetStats()
 		logrus.Debugf("Worker %d: Pool stats - Open: %d, InUse: %d, Idle: %d, WaitCount: %d",
 			w.id, stats.OpenConnections, stats.InUse, stats.Idle, stats.WaitCount)
-
-		// Update active connections metric
-		w.metrics.SetActiveConnections(stats.OpenConnections)
 	}
+
+	// Always update active connections metric
+	w.metrics.SetActiveConnections(stats.OpenConnections)
 
 	rows, err := w.dbManager.ExecuteQuery(query.SQL)
 	if err != nil {
@@ -239,6 +241,10 @@ func (w *Worker) executeSelectQuery(query *config.QueryConfig, result *metrics.Q
 
 // executeInsertQuery executes an INSERT query
 func (w *Worker) executeInsertQuery(query *config.QueryConfig, result *metrics.QueryResult) {
+	// Update connection stats
+	stats := w.dbManager.GetStats()
+	w.metrics.SetActiveConnections(stats.OpenConnections)
+	
 	res, err := w.dbManager.ExecuteExec(query.SQL)
 	if err != nil {
 		result.Success = false
@@ -262,6 +268,10 @@ func (w *Worker) executeInsertQuery(query *config.QueryConfig, result *metrics.Q
 
 // executeUpdateQuery executes an UPDATE query
 func (w *Worker) executeUpdateQuery(query *config.QueryConfig, result *metrics.QueryResult) {
+	// Update connection stats
+	stats := w.dbManager.GetStats()
+	w.metrics.SetActiveConnections(stats.OpenConnections)
+	
 	res, err := w.dbManager.ExecuteExec(query.SQL)
 	if err != nil {
 		result.Success = false
@@ -283,6 +293,10 @@ func (w *Worker) executeUpdateQuery(query *config.QueryConfig, result *metrics.Q
 
 // executeDeleteQuery executes a DELETE query
 func (w *Worker) executeDeleteQuery(query *config.QueryConfig, result *metrics.QueryResult) {
+	// Update connection stats
+	stats := w.dbManager.GetStats()
+	w.metrics.SetActiveConnections(stats.OpenConnections)
+	
 	res, err := w.dbManager.ExecuteExec(query.SQL)
 	if err != nil {
 		result.Success = false
@@ -304,6 +318,10 @@ func (w *Worker) executeDeleteQuery(query *config.QueryConfig, result *metrics.Q
 
 // executeGenericQuery executes a generic query
 func (w *Worker) executeGenericQuery(query *config.QueryConfig, result *metrics.QueryResult) {
+	// Update connection stats
+	stats := w.dbManager.GetStats()
+	w.metrics.SetActiveConnections(stats.OpenConnections)
+	
 	// Try to determine if it's a SELECT query by checking if it returns rows
 	rows, err := w.dbManager.ExecuteQuery(query.SQL)
 	if err != nil {

@@ -9,17 +9,17 @@ database:
   database: TFICarrierTrackNEW
   ssl_mode: disable
   
-  # Test için yüksek connection pool ayarları
-  max_open_conns: 20000      # 15k user + 5k buffer
-  max_idle_conns: 15000      # Daha fazla idle connection
+  # Test için güvenli connection pool ayarları
+  max_open_conns: 1000       # Güvenli limit
+  max_idle_conns: 500        # Güvenli idle limit
   conn_max_lifetime: 5m      # Daha kısa lifetime
   conn_max_idle_time: 1m     # Daha kısa idle time
   query_timeout: 30s
 
 test:
   duration: 10m               # 10 dakika test süresi
-  concurrent_users: 500     # 500 concurrent user
-  ramp_up_time: 30s           # 30 saniyede 500 kullanıcıya çık
+  concurrent_users: 500      # 500 concurrent user (güvenli)
+  ramp_up_time: 30s          # 30 saniyede 500 kullanıcıya çık
   think_time: 1s              # Normal think time
   
   # Production query'leri ile test
